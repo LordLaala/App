@@ -33,16 +33,20 @@ def process_file(entry, root, doc, log, output_dir, count):
                 convert_to_json(filepath, f'{count}_{root_name}_{entry.name}', root, output_dir)
                 count += 1
 
+def file_generator(directory):
+    for root, dirs, files in os.walk(directory):
+        if "\\NHF" in root or "\\SF" in root:
+            with os.scandir(root) as it:
+                for entry in it:
+                    if entry.is_file():
+                        yield entry, root
+
 def scan_directory(directory, doc, log, output_dir):
     count = 0
     with ProcessPoolExecutor() as executor:
         futures = []
-        for root, dirs, files in os.walk(directory):
-            if "\\NHF" in root or "\\SF" in root:
-                with os.scandir(root) as it:
-                    for entry in it:
-                        if entry.is_file():
-                            futures.append(executor.submit(process_file, entry, root, doc, log, output_dir, count))
+        for entry, root in file_generator(directory):
+            futures.append(executor.submit(process_file, entry, root, doc, log, output_dir, count))
         for future in as_completed(futures):
             future.result()
 
