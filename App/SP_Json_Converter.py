@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from DocConverter import DocConverter
 from JsonConverter import JsonConverter
 import Checker as check
@@ -34,12 +35,16 @@ def process_file(entry, root, doc, log, output_dir, count):
 
 def scan_directory(directory, doc, log, output_dir):
     count = 0
-    for root, dirs, files in os.walk(directory):
-        if "\\NHF" in root or "\\SF" in root:
-            with os.scandir(root) as it:
-                for entry in it:
-                    if entry.is_file():
-                        process_file(entry, root, doc, log, output_dir, count)
+    with ProcessPoolExecutor() as executor:
+        futures = []
+        for root, dirs, files in os.walk(directory):
+            if "\\NHF" in root or "\\SF" in root:
+                with os.scandir(root) as it:
+                    for entry in it:
+                        if entry.is_file():
+                            futures.append(executor.submit(process_file, entry, root, doc, log, output_dir, count))
+        for future in as_completed(futures):
+            future.result()
 
 def main(directory="T:\\ima\\Alle\\Temp\\SCN\\_05_Grundstücke", output_dir="JSON"):
     log = Logger()
